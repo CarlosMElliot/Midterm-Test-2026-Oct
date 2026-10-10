@@ -20,7 +20,7 @@ The repo now includes **`api/index.mjs`**, **`backend/handler.mjs`**, **`backend
    | `RESEND_API_KEY` | Email provider key; optional until email is needed |
    | `MAIL_FROM` | Verified sender address; needed for email |
 
-3. Deploy. Open `/admin`, sign in, resolve the existing content blockers, and open the test.
+3. Deploy. Open `/admin`, sign in, review the completed question bank, and open the test.
 4. Share your Vercel project URL with students. Public results are at `/results`.
 
 Generate the encryption key locally with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Put secrets in Vercel's Environment Variables screen, never in the repository or browser JavaScript. Keep the key stable across deployments; changing it without migrating records makes old data unreadable. Preview deployments pointed at the same branch share real exam data; use a separate data branch/repository for previews.
@@ -29,7 +29,7 @@ Generate the encryption key locally with `node -e "console.log(require('crypto')
 
 - `exam-data` branch → `exam-records/attempt-<random-id>.json`: encrypted names, exam snapshot, progress, answers, grades and event history.
 - `exam-data` branch → `exam-config/settings.json`: encrypted teacher configuration and edited question bank.
-- `main` branch → `docs/results.json`: public submitted-result summaries (names, scores, grading status, timestamps and random attempt identifiers).
+- `main` branch → `docs/results.json`: public submitted-result summaries (names, scores, grading status and timestamps).
 - Vercel environment → credentials only. Signed, HttpOnly cookies keep sessions valid across function restarts. Rotating the admin password invalidates admin sessions.
 
 The data branch is created automatically from `main` on the first storage request. Saves are acknowledged only after GitHub accepts the write. Revision checks and conflict retries prevent different requests from silently replacing each other's updates. Existing local-server `runtime/` files are not automatically migrated into this mode.
@@ -42,7 +42,7 @@ Submitting or grading writes the public summary during that request. If publishi
 
 This is a small-cohort option, not a high-throughput exam database. GitHub documents general secondary limits of **80 content-generating requests/minute and 500/hour**, with some endpoints having lower limits. Each save is a repository write, so many students taking this long exam simultaneously can hit limits. Errors do not become successful saves; students must wait and retry. Run a small pilot before scheduling a full class. Larger cohorts should use a database while retaining GitHub result exports. See [GitHub API rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
 
-The full Vercel implementation has automated tests using a simulated GitHub API, including concurrent updates and fresh function instances. A real Vercel deployment and your token/email provider have not been connected or end-to-end tested here.
+The full Vercel implementation has automated tests using a simulated GitHub API, including concurrent updates and fresh function instances. The production Vercel deployment and GitHub storage connection have been verified. Email requires a separate provider key and verified sender.
 
 ## Run locally (original persistent-file backend)
 
@@ -56,18 +56,13 @@ node --env-file=.env server.mjs
 
 Student: http://localhost:3000 · Teacher: http://localhost:3000/admin
 
-Run `npm test`. The test starts closed. Sign in to the dashboard, review/edit the question bank and resolve the content blockers, then click **Open test**. Saving a question-bank draft closes the test to new students; existing students can finish against their original exam snapshot.
+Run `npm test`. The test starts closed. Sign in to the dashboard, review/edit the question bank, then click **Open test**. Saving a question-bank draft closes the test to new students; existing students can finish against their original exam snapshot.
 
-## Content that still needs the teacher
+## Completed content and teacher review
 
-The supplied materials do not form a fully publishable paper yet. The dashboard explicitly blocks opening until these are resolved:
+All 24 sections contain questions and their weights total 100. Teacher-authorised original material completes the dependent-preposition forum, sporting-vocabulary meanings and six-paragraph emotions article. The two relative-clause rules have been corrected, and model answers are supplied for that section.
 
-- Part III: original Exercise 7 dependent-preposition forum text/questions missing.
-- Part X: sporting vocabulary word bank has no confirmed exercise/questions.
-- Part XV: the matching article for the emotions questions is missing; the supplied body-language blog does not match.
-- Part XXII: source questions A5 and A6 require correction (why grouped with where/when; “of” already fronted).
-
-Additional review notes: Part IV items 6, 7 and 10 have ambiguous options without context and are manually marked. Part XXIII artwork images were not supplied. Track 3.19 is included in teacher resources but has no supplied matching exercise. No fabricated questions were added for it.
+Part IV items 6, 7 and 10 retain manual marking because the supplied options permit contextual alternatives. All written answers and the letter require teacher review. Part XXIII uses its supplied listening recording; artwork images were not supplied. Track 3.19 remains an additional teacher resource.
 
 The National Geographic reference link is available **before starting** the test. Students should read it beforehand; the letter-writing section includes formal-letter guidance, useful phrases, hedging vocabulary and a ten-point rubric. Opening external tabs during the attempt triggers the focus policy.
 
@@ -119,7 +114,7 @@ The first detected blur, hidden tab, page reload or close records a warning. The
 
 ## Layout and data
 
-- `data/exam.json`: initial source bank, keys, instructions, weights and content blockers.
+- `data/exam.json`: initial source bank, keys, instructions, weights and teacher review notes.
 - `public/`: student flow, separate teacher dashboard, audio and reference images.
 - `server.mjs`: original persistent-file server for local/Docker hosting.
 - `api/index.mjs` and `backend/`: Vercel API with encrypted GitHub persistence and signed sessions.

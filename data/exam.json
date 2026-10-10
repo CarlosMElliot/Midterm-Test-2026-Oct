@@ -1,6 +1,6 @@
 {
   "title": "High Note 5 · Midterm",
-  "version": "2026-10-10",
+  "version": "2026-10-complete",
   "sections": [
     {
       "id": "1",
@@ -284,9 +284,52 @@
       "id": "3",
       "title": "Verbs + dependent prepositions",
       "weight": 3,
-      "instructions": "Complete the discussion forum with the correct prepositions.",
-      "questions": [],
-      "blocker": "Exercise 7 discussion forum was not supplied. Add the original text and questions here."
+      "instructions": "Complete each student forum post with one correct preposition. Write only the missing preposition.",
+      "questions": [
+        {
+          "id": "3-1",
+          "type": "text",
+          "prompt": "Maya: I find it easier to concentrate ____ my homework when my phone is in another room.",
+          "answer": "on",
+          "max": 1
+        },
+        {
+          "id": "3-2",
+          "type": "text",
+          "prompt": "Leo: Yesterday I apologised ____ arriving late to our study group.",
+          "answer": "for",
+          "max": 1
+        },
+        {
+          "id": "3-3",
+          "type": "text",
+          "prompt": "Ana: Regular practice helps me cope ____ exam pressure.",
+          "answer": "with",
+          "max": 1
+        },
+        {
+          "id": "3-4",
+          "type": "text",
+          "prompt": "Sam: I finally succeeded ____ solving the problem without help.",
+          "answer": "in",
+          "max": 1
+        },
+        {
+          "id": "3-5",
+          "type": "text",
+          "prompt": "Noor: We all benefit ____ sharing revision strategies.",
+          "answer": "from",
+          "max": 1
+        },
+        {
+          "id": "3-6",
+          "type": "text",
+          "prompt": "Ben: Whether our project succeeds will depend ____ how well we organise our time.",
+          "answer": "on",
+          "max": 1
+        }
+      ],
+      "reviewNote": "Completed with teacher-authorised original material or corrections; written responses accept equivalent correct answers."
     },
     {
       "id": "4",
@@ -949,9 +992,139 @@
       "id": "10",
       "title": "Sporting success vocabulary",
       "weight": 3,
-      "instructions": "Match the expressions to their meanings.",
-      "questions": [],
-      "blocker": "Only a word bank was supplied. The requested matching exercise still needs teacher approval/content.",
+      "instructions": "Choose the definition that best matches each expression about sporting success.",
+      "questions": [
+        {
+          "id": "10-1",
+          "type": "choice",
+          "prompt": "What does “being a self-starter” mean?",
+          "options": [
+            "Competing angrily with every teammate.",
+            "Avoiding any responsibility.",
+            "Needing instructions before every action.",
+            "Beginning tasks independently without waiting to be told."
+          ],
+          "answer": 3,
+          "max": 1
+        },
+        {
+          "id": "10-2",
+          "type": "choice",
+          "prompt": "What does “boundless energy” mean?",
+          "options": [
+            "Having impressive technical knowledge.",
+            "Feeling uncertain about your abilities.",
+            "Having a seemingly unlimited supply of energy.",
+            "Saving all your effort for one event."
+          ],
+          "answer": 2,
+          "max": 1
+        },
+        {
+          "id": "10-3",
+          "type": "choice",
+          "prompt": "What does “natural aptitude” mean?",
+          "options": [
+            "A rivalry between equally skilled players.",
+            "An inborn ability to learn or do something well.",
+            "A habit of refusing advice.",
+            "A willingness to give up free time."
+          ],
+          "answer": 1,
+          "max": 1
+        },
+        {
+          "id": "10-4",
+          "type": "choice",
+          "prompt": "What does “perseverance” mean?",
+          "options": [
+            "Continuing to work despite difficulties or setbacks.",
+            "Winning without needing to train.",
+            "Changing your goal whenever practice becomes hard.",
+            "Feeling jealous of another player."
+          ],
+          "answer": 0,
+          "max": 1
+        },
+        {
+          "id": "10-5",
+          "type": "choice",
+          "prompt": "What does “raw talent” mean?",
+          "options": [
+            "Expertise gained only through years of instruction.",
+            "A lack of interest in improving.",
+            "Strict obedience to every instruction.",
+            "Natural ability that has not yet been fully trained or developed."
+          ],
+          "answer": 3,
+          "max": 1
+        },
+        {
+          "id": "10-6",
+          "type": "choice",
+          "prompt": "What does “rivalry” mean?",
+          "options": [
+            "Agreement to avoid competing.",
+            "Confidence in your own judgement.",
+            "Competition between people or groups seeking the same success.",
+            "An unlimited supply of physical energy."
+          ],
+          "answer": 2,
+          "max": 1
+        },
+        {
+          "id": "10-7",
+          "type": "choice",
+          "prompt": "What does “willingness to make sacrifices” mean?",
+          "options": [
+            "Expecting success without changing your habits.",
+            "Readiness to give up valued things to achieve a goal.",
+            "Refusing to miss any social activity.",
+            "Feeling naturally suited to a sport."
+          ],
+          "answer": 1,
+          "max": 1
+        },
+        {
+          "id": "10-8",
+          "type": "choice",
+          "prompt": "What does “self-conviction” mean?",
+          "options": [
+            "Strong belief in your own abilities or judgement.",
+            "Dependence on other people to make every decision.",
+            "Hostility towards all competitors.",
+            "A complete absence of ambition."
+          ],
+          "answer": 0,
+          "max": 1
+        },
+        {
+          "id": "10-9",
+          "type": "choice",
+          "prompt": "What does “stubborn streak” mean?",
+          "options": [
+            "An ability to recover energy quickly.",
+            "A desire to please everyone immediately.",
+            "A willingness to accept every suggestion.",
+            "A tendency to refuse to change your mind or behaviour."
+          ],
+          "answer": 3,
+          "max": 1
+        },
+        {
+          "id": "10-10",
+          "type": "choice",
+          "prompt": "What does “tenacity” mean?",
+          "options": [
+            "A fear of making any decisions.",
+            "An ability that has not been developed.",
+            "Firm determination to hold on to a goal and not give up.",
+            "Competition between neighbouring teams."
+          ],
+          "answer": 2,
+          "max": 1
+        }
+      ],
       "wordBank": [
         "being a self-starter",
         "boundless energy",
@@ -963,7 +1136,8 @@
         "self-conviction",
         "stubborn streak",
         "tenacity"
-      ]
+      ],
+      "reviewNote": "Completed with teacher-authorised original material or corrections; written responses accept equivalent correct answers."
     },
     {
       "id": "11",
@@ -1403,7 +1577,7 @@
       "id": "15",
       "title": "Reading: Emotions and expression",
       "weight": 3,
-      "instructions": "Choose the best answer for each question.",
+      "instructions": "Read the six-paragraph article below, then choose the best answer to each question. Base your answers on the article.",
       "questions": [
         {
           "prompt": "The performance example in paragraph 1 is used to:",
@@ -1414,20 +1588,20 @@
             "Show effects of emotions.",
             "Compare stressful situations."
           ],
-          "answer": null,
+          "answer": 2,
           "id": "15-1",
           "max": 1
         },
         {
-          "prompt": "Counterintuitive in paragraph 3 comments on:",
+          "prompt": "Why does the writer describe smiling after losing a match as “counterintuitive” in paragraph 3?",
           "type": "choice",
           "options": [
-            "Facial expressions and emotion.",
-            "Doing something seemingly unnatural.",
-            "Indulging emotion.",
-            "Scientists telling us how to feel."
+            "It makes the result of the match uncertain.",
+            "It seems contrary to the disappointment the person feels.",
+            "It proves that disappointment has disappeared.",
+            "It follows an instruction from a scientist."
           ],
-          "answer": null,
+          "answer": 1,
           "id": "15-2",
           "max": 1
         },
@@ -1440,7 +1614,7 @@
             "Hiding emotions causes depression.",
             "Emotions are solely mental."
           ],
-          "answer": null,
+          "answer": 1,
           "id": "15-3",
           "max": 1
         },
@@ -1451,9 +1625,9 @@
             "Correct a misunderstanding about women’s roles.",
             "Avoid emotional labour consequences.",
             "Advocate emotional labour.",
-            "Outline dangers of emotional labour."
+            "Outline the potential burden of emotional labour."
           ],
-          "answer": null,
+          "answer": 3,
           "id": "15-4",
           "max": 1
         },
@@ -1466,7 +1640,7 @@
             "Follow scientific advice.",
             "People should decide how best to control emotions."
           ],
-          "answer": null,
+          "answer": 3,
           "id": "15-5",
           "max": 1
         },
@@ -1479,12 +1653,13 @@
             "Praise emotion research.",
             "Persuade pursuit of happiness."
           ],
-          "answer": null,
+          "answer": 1,
           "id": "15-6",
           "max": 1
         }
       ],
-      "blocker": "Matching article missing. The supplied Your body speaks blog does not answer these questions."
+      "passage": "Must we always look happy?\n\n1. At a school performance, a young actor waits behind the curtain. Nervousness makes his hands shake and his voice sound thin. Later, when the audience applauds, his shoulders relax and he speaks with confidence. The scene offers a familiar reminder: feelings can change how we move, sound and behave, even when we have planned exactly what to say.\n\n2. Expressions also help people communicate without words. A friend's worried look may invite a question; an excited grin can announce good news before a conversation begins. Yet interpreting a face is not always straightforward. Someone who looks serious may simply be concentrating. It would be unfair to assume that every unsmiling person is unfriendly or unhappy.\n\n3. Sometimes people deliberately choose an expression that does not match their mood. Imagine feeling disappointed after losing a match and then trying to smile. That action may seem counterintuitive: your expression appears to contradict what you feel. You might do it to reassure a teammate or to approach the next conversation more positively. Choosing the smile does not mean that the disappointment has disappeared.\n\n4. People disagree about attempts to influence feelings through outward behaviour. Some welcome the idea of using a smile or a calm voice to help themselves face a difficult moment. Others feel that forcing an expression makes their experience seem less honest. Both attitudes deserve consideration. An approach that one person finds helpful may leave another feeling pressured to pretend, so a universal rule would overlook important differences.\n\n5. The pressure can be especially noticeable at work. A receptionist may be expected to sound cheerful while dealing with an impatient customer. This management of displayed feelings is often called emotional labour. In an imagined workplace where staff must hide every trace of frustration, an employee could finish the day feeling exhausted and unheard. The difficulty is not simply being polite; it is being given no space to acknowledge difficult experiences. Managers should consider that burden when setting expectations for customer service.\n\n6. There is a difference between choosing a helpful response and being required to wear a permanent smile. People need room to decide how to manage and express their feelings in different situations, while still treating others respectfully. A quiet moment, an honest conversation or a deliberate smile may each have a place. The aim should be a thoughtful choice, not a demand that everyone look happy all the time.",
+      "reviewNote": "Completed with teacher-authorised original material or corrections; written responses accept equivalent correct answers."
     },
     {
       "id": "16",
@@ -2256,131 +2431,131 @@
         {
           "prompt": "A1. Choose: A defining clause gives essential / extra information; a non-defining clause gives essential / extra information. Commas are used in defining / non-defining clauses.",
           "type": "text",
-          "answer": null,
+          "answer": "essential; extra; non-defining",
           "max": 1,
           "id": "22-1"
         },
         {
           "prompt": "A2. Which can be replaced by that / what in: The jungle setting is something which Rousseau painted again and again.",
           "type": "text",
-          "answer": null,
+          "answer": "that",
           "max": 1,
           "id": "22-2"
         },
         {
           "prompt": "A3. In which sentence can which be omitted? Explain. (a) The painting reminds us of stories from Arabian Nights, which had recently been translated. (b) The jungle setting is something which Rousseau painted again and again.",
           "type": "text",
-          "answer": null,
+          "answer": "(b): which is the object in a defining clause. It cannot be omitted in the non-defining clause in (a).",
           "max": 1,
           "id": "22-3"
         },
         {
           "prompt": "A4. A full relative clause is replaced by a present / past participle: paintings set in the jungle; a couple dressed in carnival costumes.",
           "type": "text",
-          "answer": null,
+          "answer": "past participle",
           "max": 1,
           "id": "22-4"
         },
         {
-          "prompt": "A5. Where, when and why can be used in both defining and non-defining / only defining clauses.",
+          "prompt": "A5. Complete each rule: Where and when can introduce (both defining and non-defining / only defining) clauses. Why normally follows the reason in a (defining / non-defining) clause.",
           "type": "text",
-          "answer": null,
+          "answer": "both defining and non-defining; defining",
           "max": 1,
           "id": "22-5"
         },
         {
-          "prompt": "A6. Moving of to the start makes this more / less formal: The established art world, of which Rousseau longed to become an accepted part, was unable to appreciate his work.",
+          "prompt": "A6. Which version is more formal, and why? (a) The art world, which Rousseau longed to become an accepted part of, rejected him. (b) The art world, of which Rousseau longed to become an accepted part, rejected him.",
           "type": "text",
-          "answer": null,
+          "answer": "(b), because the preposition of is placed before the relative pronoun which.",
           "max": 1,
           "id": "22-6"
         },
         {
           "prompt": "B1. Rousseau painted in his spare time until he was 49, ____ point he retired to paint full time.",
           "type": "text",
-          "answer": null,
+          "answer": "at which",
           "max": 1,
           "id": "22-7"
         },
         {
           "prompt": "B2. His first employer fired him, as a result ____ he joined the army.",
           "type": "text",
-          "answer": null,
+          "answer": "of which",
           "max": 1,
           "id": "22-8"
         },
         {
           "prompt": "B3. He painted exotic scenes, none ____ were based on first-hand experience.",
           "type": "text",
-          "answer": null,
+          "answer": "of which",
           "max": 1,
           "id": "22-9"
         },
         {
           "prompt": "B4. The late 1800s was a period ____ art was developing rapidly.",
           "type": "text",
-          "answer": null,
+          "answer": "during which / in which",
           "max": 1,
           "id": "22-10"
         },
         {
           "prompt": "B5. He was friends with Picasso and Jarry, both ____ supported his work.",
           "type": "text",
-          "answer": null,
+          "answer": "of whom",
           "max": 1,
           "id": "22-11"
         },
         {
           "prompt": "B6. He exhibited his final painting in 1910, ____ time he was already seriously ill.",
           "type": "text",
-          "answer": null,
+          "answer": "by which / at which",
           "max": 1,
           "id": "22-12"
         },
         {
           "prompt": "C1. Rewrite Anyone who using an -ever word: Anyone who painted that is a genius.",
           "type": "text",
-          "answer": null,
+          "answer": "Whoever painted that is a genius.",
           "max": 1,
           "id": "22-13"
         },
         {
           "prompt": "C2. Rewrite any time: You can visit the gallery any time you like.",
           "type": "text",
-          "answer": null,
+          "answer": "You can visit the gallery whenever you like.",
           "max": 1,
           "id": "22-14"
         },
         {
           "prompt": "C3. Rewrite Anywhere: Anywhere I go, I always bring my drawing chalks with me.",
           "type": "text",
-          "answer": null,
+          "answer": "Wherever I go, I always bring my drawing chalks with me.",
           "max": 1,
           "id": "22-15"
         },
         {
           "prompt": "C4. Rewrite No matter what: No matter what I say, you’ll disagree.",
           "type": "text",
-          "answer": null,
+          "answer": "Whatever I say, you’ll disagree.",
           "max": 1,
           "id": "22-16"
         },
         {
           "prompt": "C5. Rewrite any: Sit in any chair you like.",
           "type": "text",
-          "answer": null,
+          "answer": "Sit in whichever chair you like.",
           "max": 1,
           "id": "22-17"
         },
         {
           "prompt": "C6. Rewrite everything: Stop everything you’re doing!",
           "type": "text",
-          "answer": null,
+          "answer": "Stop whatever you’re doing!",
           "max": 1,
           "id": "22-18"
         }
       ],
-      "blocker": "A5 inaccurately groups why with where/when. A6 already places of at the start. Teacher must correct these two source items before opening the exam."
+      "reviewNote": "Completed with teacher-authorised original material or corrections; written responses accept equivalent correct answers."
     },
     {
       "id": "23",
