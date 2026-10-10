@@ -24,6 +24,24 @@ export function createHandler(env=process.env,store=createRepositoryStore(env),r
  async function readBody(req){if(req.body!==undefined){const b=typeof req.body==='string'?JSON.parse(req.body):req.body;if(JSON.stringify(b).length>250000)throw new HttpError(413,'Request too large');return b||{};}let text='';for await(const chunk of req){text+=chunk;if(text.length>250000)throw new HttpError(413,'Request too large');}return text?JSON.parse(text):{};}
  return async(req,res)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');try{
   const url=new URL(req.url,'http://localhost');const path=url.searchParams.get('route')?'/api/'+url.searchParams.get('route'):url.pathname;const cookies=parseCookies(req);const method=req.method;
+  // Only this submission route accepts the public GitHub Pages origin; admin routes stay same-origin.
+  if(path==='/api/static-submit'){
+   if(req.headers.origin!=='https://carlosmelliot.github.io')throw new HttpError(403,'Submission origin is not allowed.');
+   res.setHeader('Access-Control-Allow-Origin','https://carlosmelliot.github.io');res.setHeader('Vary','Origin');
+   res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');
+   if(method==='OPTIONS'){res.statusCode=204;return res.end();}
+   if(method!=='POST')throw new HttpError(405,'Method not allowed');
+   const b=await readBody(req),c=await config();if(!c.open||validate(c.exam).length)throw new HttpError(409,'The teacher has closed submissions.');
+   if(b.examVersion!==c.exam.version)throw new HttpError(409,'This test version is no longer accepted. Download your response and contact your teacher.');
+   if(!/^[a-f0-9-]{36}$/i.test(b.clientId||''))throw new HttpError(400,'Invalid attempt identifier');
+   const name=String(b.name||'').trim();if(name.length<2||name.length>100)throw new HttpError(400,'Enter a valid name.');
+   if(!b.answers||typeof b.answers!=='object'||Array.isArray(b.answers))throw new HttpError(400,'Answers required');
+   const answers={};const questions=c.exam.sections.flatMap(s=>s.questions);
+   for(const [qid,v] of Object.entries(b.answers)){const q=questions.find(q=>q.id===qid);if(!q||(q.type==='choice'?(!Number.isInteger(v)||v<0||v>=q.options.length):(typeof v!=='string'||v.length>20000)))throw new HttpError(400,'Invalid answer');answers[qid]=v;}
+   const id=sha('github-pages-v2:'+b.clientId).slice(0,32),fingerprint=sha(JSON.stringify({name,answers:Object.fromEntries(Object.entries(answers).sort()),version:b.examVersion}));
+   const a=await store.mutate(file(id),old=>{if(old){if(old.submissionFingerprint!==fingerprint)throw new HttpError(409,'This attempt has already been submitted with different answers.');return undefined;}const now=timestamp();return change({id,secret:sha(crypto.randomBytes(32)),name,source:'github-pages-v2',completionScoring:true,submissionFingerprint:fingerprint,startedAt:now,clientStartedAt:typeof b.startedAt==='string'?b.startedAt.slice(0,40):null,submittedAt:now,status:'submitted',exam:c.exam,answers,grades:{},position:0,violations:Number.isInteger(b.violations)?Math.max(0,Math.min(b.violations,3)):0,events:[{type:'submitted_from_github_pages',at:now}]});});
+   const warning=await publishSafely(a);const result=score(a);return send(res,200,{ok:true,receipt:{id:a.id,submittedAt:a.submittedAt,score:result.total,maxScore:100,pendingQuestions:result.pending,completionCredit:result.completionCredit,gradingStatus:result.final?'Final':'Awaiting teacher review',repository:'CarlosMElliot/Midterm-Test-2026-Oct'},warning});
+  }
   if(!['GET','POST'].includes(method))throw new HttpError(405,'Method not allowed');
   if(method==='POST'&&((req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)||req.headers['sec-fetch-site']==='cross-site'))throw new HttpError(403,'Cross-origin request blocked');
   const b=method==='POST'?await readBody(req):{};
