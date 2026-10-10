@@ -1,0 +1,62 @@
+import http from 'node:http';
+import fs from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import {fileURLToPath} from 'node:url';
+import {validate,score,publicExam,encrypt,report} from './lib.mjs';
+const ROOT=path.dirname(fileURLToPath(import.meta.url));
+export async function createApp(env=process.env){
+ const dir=env.DATA_DIR||path.join(ROOT,'runtime');await fs.mkdir(dir,{recursive:true});
+ let bank=JSON.parse(await fs.readFile(path.join(ROOT,'data/exam.json'),'utf8')),settings={open:false};
+ try{bank=JSON.parse(await fs.readFile(path.join(dir,'exam.json'),'utf8'));}catch{}
+ try{settings=JSON.parse(await fs.readFile(path.join(dir,'settings.json'),'utf8'));}catch{}
+ const attempts=new Map(),sessions=new Map(),limits=new Map();let queue=Promise.resolve();
+ for(const f of await fs.readdir(dir))if(/^attempt-[a-f0-9]+\.json$/.test(f)){const a=JSON.parse(await fs.readFile(path.join(dir,f),'utf8'));attempts.set(a.id,a);}
+ async function write(file,value){const tmp=path.join(dir,file+'.tmp');await fs.writeFile(tmp,JSON.stringify(value,null,2),{mode:0o600});await fs.rename(tmp,path.join(dir,file));}
+ async function save(a){a.updatedAt=new Date().toISOString();a.backupPending=true;await write(`attempt-${a.id}.json`,a);}
+ const backupReady=!!(env.GITHUB_TOKEN&&/^[a-f0-9]{64}$/i.test(env.RESULTS_ENCRYPTION_KEY||''));let backing=false;
+ async function backup(){if(backing||!backupReady)return;backing=true;try{for(const a of attempts.values()){if(!a.backupPending)continue;const stamp=a.updatedAt;try{const url=`https://api.github.com/repos/${env.GITHUB_REPOSITORY||'CarlosMElliot/Midterm-Test-2026-Oct'}/contents/results-encrypted/${a.id}.json`;const headers={Authorization:`Bearer ${env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};const old=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});if(!old.ok&&old.status!==404)throw Error(`GitHub ${old.status}`);const sha=old.ok?(await old.json()).sha:undefined;const payload={...a};delete payload.secret;const result=await fetch(url,{method:'PUT',headers,body:JSON.stringify({message:'Back up encrypted exam attempt',sha,content:Buffer.from(JSON.stringify(encrypt(payload,env.RESULTS_ENCRYPTION_KEY))).toString('base64')}),signal:AbortSignal.timeout(15000)});if(!result.ok)throw Error(`GitHub ${result.status}`);await serialize(async()=>{if(a.updatedAt===stamp)a.backupPending=false;a.backupError=null;a.lastBackupAt=new Date().toISOString();await write(`attempt-${a.id}.json`,a);});}catch(e){a.backupError=e.message;}}}finally{backing=false;}}
+ const timer=setInterval(backup,60000);timer.unref();
+ function serialize(fn){const p=queue.then(fn);queue=p.catch(()=>{});return p;}
+ function cookie(res,name,value){res.setHeader('Set-Cookie',`${name}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${value?86400:0}${env.NODE_ENV==='production'?'; Secure':''}`);}
+ function auth(req){return (req.headers.cookie||'').split('; ').reduce((r,s)=>{const i=s.indexOf('=');r[s.slice(0,i)]=s.slice(i+1);return r;},{});}
+ function admin(req){const session=sessions.get(auth(req).admin);return session&&session>Date.now();}
+ function attempt(req){const [id,secret]=(auth(req).attempt||'').split('.');const a=attempts.get(id);return a&&secret&&a.secret===crypto.createHash('sha256').update(secret).digest('hex')?a:null;}
+ function send(res,status,value){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
+ async function body(req){let s='';for await(const b of req){s+=b;if(s.length>2000000)throw Error('Request too large');}return s?JSON.parse(s):{};}
+ const server=http.createServer(async(req,res)=>{try{
+ res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+ const url=new URL(req.url,'http://localhost'),p=url.pathname;
+ if(req.method==='POST'&&((req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)||req.headers['sec-fetch-site']==='cross-site'))return send(res,403,{error:'Cross-origin request blocked'});
+ if(p.startsWith('/api/')){const b=req.method==='POST'?await body(req):{};
+ return await serialize(async()=>{
+ if(p==='/api/login'&&req.method==='POST'){const ip=req.socket.remoteAddress;const l=limits.get(ip)||{count:0,at:Date.now()};if(Date.now()-l.at>900000){l.count=0;l.at=Date.now();}limits.set(ip,l);if(++l.count>15)return send(res,429,{error:'Too many attempts. Try again in 15 minutes.'});if(!env.ADMIN_PASSWORD||env.ADMIN_PASSWORD.length<16)return send(res,503,{error:'Set ADMIN_PASSWORD (at least 16 characters) on the server.'});const hash=x=>crypto.createHash('sha256').update(String(x||'')).digest();if(!crypto.timingSafeEqual(hash(b.password),hash(env.ADMIN_PASSWORD)))return send(res,401,{error:'Incorrect password'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,Date.now()+8*3600000);cookie(res,'admin',token);return send(res,200,{ok:true});}
+ if(p==='/api/exam')return send(res,200,{exam:publicExam(bank),open:settings.open&&!validate(bank).length});
+ if(p.startsWith('/api/admin')){if(!admin(req))return send(res,401,{error:'Sign in required'});
+ if(p==='/api/admin/logout'){sessions.delete(auth(req).admin);cookie(res,'admin','');return send(res,200,{ok:true});}
+ if(p==='/api/admin/config'&&req.method==='GET')return send(res,200,{exam:bank,settings,errors:validate(bank),backupReady,emailReady:!!(env.RESEND_API_KEY&&env.MAIL_FROM),extraAudio:bank.extraAudio});
+ if(p==='/api/admin/config'&&req.method==='POST'){if(b.exam){const errors=validate(b.exam).filter(x=>!x.includes('questions required')&&!b.exam.sections?.some(s=>s.blocker&&x.includes(s.blocker)));if(errors.length)return send(res,400,{error:errors.join('\n')});bank=b.exam;await write('exam.json',bank);}if(b.open===true&&validate(bank).length)return send(res,400,{error:validate(bank).join('\n')});settings.open=b.open===true;await write('settings.json',settings);return send(res,200,{ok:true,errors:validate(bank)});}
+ if(p==='/api/admin/attempts')return send(res,200,{attempts:[...attempts.values()].map(a=>({id:a.id,name:a.name,status:a.status,startedAt:a.startedAt,updatedAt:a.updatedAt,submittedAt:a.submittedAt,violations:a.violations,score:score(a),lastBackupAt:a.lastBackupAt,backupError:a.backupError,backupPending:a.backupPending})).sort((a,b)=>b.startedAt.localeCompare(a.startedAt))});
+ const a=attempts.get(b.id||url.searchParams.get('id'));if(!a)return send(res,404,{error:'Attempt not found'});
+ if(p==='/api/admin/attempt'){const {secret,...safe}=a;return send(res,200,{attempt:safe,score:score(a),report:report(a)});}
+ if(p==='/api/admin/grade'&&req.method==='POST'){for(const [id,v]of Object.entries(b.grades||{})){const q=a.exam.sections.flatMap(s=>s.questions).find(q=>q.id===id);if(!q||!Number.isFinite(v)||v<0||v>q.max)return send(res,400,{error:'Invalid grade'});}Object.assign(a.grades,b.grades);a.feedback=String(b.feedback||'').slice(0,10000);a.events.push({type:'graded',at:new Date().toISOString()});await save(a);return send(res,200,{score:score(a),report:report(a)});}
+ if(p==='/api/admin/email'&&req.method==='POST'){if(!env.RESEND_API_KEY||!env.MAIL_FROM)return send(res,503,{error:'Email delivery is not configured. Download/copy the report instead.'});if(!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(b.email||'')||b.email.length>254)return send(res,400,{error:'Valid recipient email required'});const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':crypto.createHash('sha256').update(a.id+a.updatedAt+b.email).digest('hex')},body:JSON.stringify({from:env.MAIL_FROM,to:[b.email],subject:`Midterm results: ${a.name}`,text:report(a)}),signal:AbortSignal.timeout(15000)});if(!r.ok)return send(res,502,{error:`Email provider rejected delivery (${r.status})`});a.events.push({type:'email_sent',at:new Date().toISOString(),recipient:b.email});await save(a);return send(res,200,{ok:true});}
+ return send(res,404,{error:'Unknown admin operation'});}
+ if(p==='/api/start'&&req.method==='POST'){if(!settings.open||validate(bank).length)return send(res,409,{error:'The teacher has not opened this test yet.'});const current=attempt(req);if(current&&current.status==='in_progress')return send(res,409,{error:'Resume your current attempt.'});const name=String(b.name||'').trim();if(name.length<2||name.length>100)return send(res,400,{error:'Enter your name (2–100 characters).'});const secret=crypto.randomBytes(32).toString('hex'),id=crypto.randomBytes(16).toString('hex');const a={id,secret:crypto.createHash('sha256').update(secret).digest('hex'),name,startedAt:new Date().toISOString(),status:'in_progress',exam:structuredClone(bank),answers:{},grades:{},position:0,violations:0,events:[]};attempts.set(id,a);await save(a);cookie(res,'attempt',id+'.'+secret);return send(res,200,{ok:true});}
+ const a=attempt(req);if(!a)return send(res,401,{error:'No active attempt'});
+ if(p==='/api/attempt')return send(res,200,{name:a.name,status:a.status,answers:a.answers,position:a.position,violations:a.violations,exam:publicExam(a.exam)});
+ if(a.status!=='in_progress')return send(res,409,{error:'This attempt is closed',restart:a.status==='reset'});
+ if(p==='/api/save'&&req.method==='POST'){for(const [id,v]of Object.entries(b.answers||{})){const q=a.exam.sections.flatMap(s=>s.questions).find(q=>q.id===id);if(!q||(q.type==='choice'?(!Number.isInteger(v)||v<0||v>=q.options.length):(typeof v!=='string'||v.length>20000)))return send(res,400,{error:'Invalid answer'});}Object.assign(a.answers,b.answers);if(Number.isInteger(b.position)&&b.position>=0&&b.position<1000)a.position=b.position;await save(a);return send(res,200,{ok:true});}
+ if(p==='/api/violation'&&req.method==='POST'){const now=Date.now();if(now-(a.lastViolation||0)>1500){a.lastViolation=now;a.violations++;a.events.push({type:'focus_leave',at:new Date().toISOString(),reason:String(b.reason||'leave').slice(0,50)});}if(a.violations>=2){a.status='reset';cookie(res,'attempt','');}await save(a);return send(res,200,{restart:a.status==='reset',violations:a.violations});}
+ if(p==='/api/submit'&&req.method==='POST'){a.status='submitted';a.submittedAt=new Date().toISOString();a.events.push({type:'submitted',at:a.submittedAt});await save(a);return send(res,200,{ok:true});}
+ return send(res,404,{error:'Unknown operation'});
+ });}
+ if(!['GET','HEAD'].includes(req.method))return send(res,405,{error:'Method not allowed'});
+ const file=path.resolve(ROOT,'public','.'+(p==='/'?'/index.html':p==='/admin'?'/admin.html':decodeURIComponent(p)));if(!file.startsWith(path.join(ROOT,'public')+path.sep))return send(res,403,{error:'Forbidden'});
+ const stat=await fs.stat(file);if(!stat.isFile())throw Error('Missing');const mime={'.html':'text/html','.css':'text/css','.js':'text/javascript','.png':'image/png','.mp3':'audio/mpeg'}[path.extname(file)]||'application/octet-stream';res.setHeader('Content-Type',mime);res.setHeader('Cache-Control',p.includes('/assets/')?'public, max-age=86400':'no-cache');res.setHeader('Accept-Ranges','bytes');let start=0,end=stat.size-1,status=200;
+ if(req.headers.range){const m=/^bytes=(\d+)-(\d*)$/.exec(req.headers.range);if(!m||Number(m[1])>=stat.size){res.writeHead(416,{'Content-Range':`bytes */${stat.size}`});return res.end();}start=Number(m[1]);end=m[2]?Math.min(Number(m[2]),end):end;if(end<start){res.writeHead(416);return res.end();}status=206;res.setHeader('Content-Range',`bytes ${start}-${end}/${stat.size}`);}res.writeHead(status,{'Content-Length':end-start+1});if(req.method==='HEAD')res.end();else createReadStream(file,{start,end}).pipe(res);
+ }catch(e){if(!res.headersSent)send(res,e.code==='ENOENT'?404:400,{error:e.code==='ENOENT'?'Not found':'Request could not be completed'});else res.end();}});
+ server.on('close',()=>clearInterval(timer));return {server,backup};
+}
+if(process.argv[1]===fileURLToPath(import.meta.url)){const {server,backup}=await createApp();server.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>{console.log(`Midterm listening on port ${process.env.PORT||3000}`);backup();});}
