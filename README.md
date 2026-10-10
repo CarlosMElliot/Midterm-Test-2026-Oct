@@ -1,6 +1,6 @@
 # High Note 5 · October 2026 Midterm
 
-A name-only, 24-section exam with a 100-point weighted score, autosave, seven supplied listening recordings, one-at-a-time clothing picture questions, teacher grading and result delivery.
+A name-only, 24-section exam with a 100-point weighted score, autosave, seven supplied listening recordings, one-at-a-time clothing picture questions, teacher grading, public results and result delivery.
 
 ## Run
 
@@ -39,7 +39,7 @@ Use one server instance: persistence and sessions use local files/memory. Do not
 
 ## Results in the repository
 
-Set `GITHUB_TOKEN` to a fine-grained token restricted to this repository with Contents read/write, `GITHUB_REPOSITORY` to the target owner/repo, and `RESULTS_ENCRYPTION_KEY` to 64 hexadecimal characters (32 random bytes). The repository is public: **never commit plaintext student records, .env or secrets**.
+Set `GITHUB_TOKEN` to a fine-grained token restricted to this repository with Contents read/write, `GITHUB_REPOSITORY` to the target owner/repo, and `RESULTS_ENCRYPTION_KEY` to 64 hexadecimal characters (32 random bytes). The repository is public: **never commit detailed plaintext student records, .env or secrets**. The public name/score summary below is intentionally published as requested.
 
 The server saves progress locally immediately and retries encrypted GitHub backups once per minute and after server startup. Each backup goes to `results-encrypted/<random-attempt-id>.json` on the repository's default branch. AES-256-GCM encrypts the student's name, timestamps, answers, exam snapshot, grades and event history. Names never appear in commit messages or filenames. Backup status/errors appear in the dashboard. A pending backup is not a completed repository save. Configure the token and key before use; keep the key outside the repository. The server does not automatically restore encrypted records; the persistent volume is the live data store. An offline decrypt utility is included below.
 
@@ -48,6 +48,24 @@ RESULTS_ENCRYPTION_KEY=... node scripts/decrypt.mjs encrypted-record.json restor
 ```
 
 Store decrypted exports privately. Dashboard JSON exports include answers and identities.
+
+## Public results and GitHub Pages
+
+`/results` is the public scoreboard on the running Node app. It displays each submitted attempt's name, score out of 100, grading status, number of pending questions, submission time and last update time. Draft/reset attempts, answers, answer keys, teacher feedback, email addresses and session secrets are excluded. Students see a disclosure before starting. Scores awaiting manual review are explicitly provisional.
+
+With `GITHUB_TOKEN` configured, the server publishes the same allow-listed summary to **`docs/results.json`** on the default branch once per minute. This public summary does not require the encryption key; encrypted detailed backups still do. The dashboard shows public-sync configuration/errors. Unchanged summaries are not recommitted. Live scores update immediately after submission/grading; the repository and Pages can lag behind. No student results are populated until actual attempts are submitted.
+
+**GitHub Pages can host the public scoreboard in `docs/`:**
+
+1. Open repository **Settings → Pages**.
+2. Select **Deploy from a branch**, branch **main**, folder **/docs**, then Save.
+3. After GitHub publishes it, the scoreboard URL will be `https://CarlosMElliot.github.io/Midterm-Test-2026-Oct/` (unless you configure a custom domain).
+
+Pages is not enabled automatically by this code change. The `docs/` folder contains only the public scoreboard, styles, JavaScript and results summary. Do not publish the entire repository as an exam site.
+
+**The full exam cannot run on GitHub Pages alone.** Pages serves static files and does not run this Node server. The current exam needs its backend for trusted grading, persistent attempts, authenticated administration, repository writes and email. Hosting the full interface on Pages would require an additional backend deployment and cross-origin authentication changes. Never put a GitHub token or email API key in browser JavaScript. See [GitHub's Pages documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
+
+The API used for summaries is read-only and public: `GET /api/results`.
 
 ## Email
 

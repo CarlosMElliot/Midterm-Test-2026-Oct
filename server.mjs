@@ -4,7 +4,7 @@ import {createReadStream} from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {validate,score,publicExam,encrypt,report} from './lib.mjs';
+import {validate,score,publicExam,encrypt,report,publicResults} from './lib.mjs';
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 export async function createApp(env=process.env){
  const dir=env.DATA_DIR||path.join(ROOT,'runtime');await fs.mkdir(dir,{recursive:true});
@@ -15,8 +15,22 @@ export async function createApp(env=process.env){
  for(const f of await fs.readdir(dir))if(/^attempt-[a-f0-9]+\.json$/.test(f)){const a=JSON.parse(await fs.readFile(path.join(dir,f),'utf8'));attempts.set(a.id,a);}
  async function write(file,value){const tmp=path.join(dir,file+'.tmp');await fs.writeFile(tmp,JSON.stringify(value,null,2),{mode:0o600});await fs.rename(tmp,path.join(dir,file));}
  async function save(a){a.updatedAt=new Date().toISOString();a.backupPending=true;await write(`attempt-${a.id}.json`,a);}
- const backupReady=!!(env.GITHUB_TOKEN&&/^[a-f0-9]{64}$/i.test(env.RESULTS_ENCRYPTION_KEY||''));let backing=false;
- async function backup(){if(backing||!backupReady)return;backing=true;try{for(const a of attempts.values()){if(!a.backupPending)continue;const stamp=a.updatedAt;try{const url=`https://api.github.com/repos/${env.GITHUB_REPOSITORY||'CarlosMElliot/Midterm-Test-2026-Oct'}/contents/results-encrypted/${a.id}.json`;const headers={Authorization:`Bearer ${env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};const old=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});if(!old.ok&&old.status!==404)throw Error(`GitHub ${old.status}`);const sha=old.ok?(await old.json()).sha:undefined;const payload={...a};delete payload.secret;const result=await fetch(url,{method:'PUT',headers,body:JSON.stringify({message:'Back up encrypted exam attempt',sha,content:Buffer.from(JSON.stringify(encrypt(payload,env.RESULTS_ENCRYPTION_KEY))).toString('base64')}),signal:AbortSignal.timeout(15000)});if(!result.ok)throw Error(`GitHub ${result.status}`);await serialize(async()=>{if(a.updatedAt===stamp)a.backupPending=false;a.backupError=null;a.lastBackupAt=new Date().toISOString();await write(`attempt-${a.id}.json`,a);});}catch(e){a.backupError=e.message;}}}finally{backing=false;}}
+ const backupReady=!!(env.GITHUB_TOKEN&&/^[a-f0-9]{64}$/i.test(env.RESULTS_ENCRYPTION_KEY||''));let backing=false;let publicBackupError=null,lastPublicHash=null;
+ async function backup(){if(backing||!env.GITHUB_TOKEN)return;backing=true;try{for(const a of attempts.values()){if(!backupReady||!a.backupPending)continue;const stamp=a.updatedAt;try{const url=`https://api.github.com/repos/${env.GITHUB_REPOSITORY||'CarlosMElliot/Midterm-Test-2026-Oct'}/contents/results-encrypted/${a.id}.json`;const headers={Authorization:`Bearer ${env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};const old=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});if(!old.ok&&old.status!==404)throw Error(`GitHub ${old.status}`);const sha=old.ok?(await old.json()).sha:undefined;const payload={...a};delete payload.secret;const result=await fetch(url,{method:'PUT',headers,body:JSON.stringify({message:'Back up encrypted exam attempt',sha,content:Buffer.from(JSON.stringify(encrypt(payload,env.RESULTS_ENCRYPTION_KEY))).toString('base64')}),signal:AbortSignal.timeout(15000)});if(!result.ok)throw Error(`GitHub ${result.status}`);await serialize(async()=>{if(a.updatedAt===stamp)a.backupPending=false;a.backupError=null;a.lastBackupAt=new Date().toISOString();await write(`attempt-${a.id}.json`,a);});}catch(e){a.backupError=e.message;}}}finally{try{await backupPublic();}finally{backing=false;}}}
+ async function backupPublic(){
+  const content=JSON.stringify({results:publicResults([...attempts.values()])},null,2)+'\n';
+  const hash=crypto.createHash('sha256').update(content).digest('hex');if(hash===lastPublicHash)return;
+  try{
+   const url=`https://api.github.com/repos/${env.GITHUB_REPOSITORY||'CarlosMElliot/Midterm-Test-2026-Oct'}/contents/docs/results.json`;
+   const headers={Authorization:`Bearer ${env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+   const old=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});
+   if(!old.ok&&old.status!==404)throw Error(`GitHub ${old.status}`);
+   const previous=old.ok?await old.json():null;
+   if(previous?.content&&Buffer.from(previous.content,'base64').toString()===content){lastPublicHash=hash;publicBackupError=null;return;}
+   const result=await fetch(url,{method:'PUT',headers,body:JSON.stringify({message:'Update public midterm results',sha:previous?.sha,content:Buffer.from(content).toString('base64')}),signal:AbortSignal.timeout(15000)});
+   if(!result.ok)throw Error(`GitHub ${result.status}`);lastPublicHash=hash;publicBackupError=null;
+  }catch(e){publicBackupError=e.message;}
+ }
  const timer=setInterval(backup,60000);timer.unref();
  function serialize(fn){const p=queue.then(fn);queue=p.catch(()=>{});return p;}
  function cookie(res,name,value){res.setHeader('Set-Cookie',`${name}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${value?86400:0}${env.NODE_ENV==='production'?'; Secure':''}`);}
@@ -32,10 +46,11 @@ export async function createApp(env=process.env){
  if(p.startsWith('/api/')){const b=req.method==='POST'?await body(req):{};
  return await serialize(async()=>{
  if(p==='/api/login'&&req.method==='POST'){const ip=req.socket.remoteAddress;const l=limits.get(ip)||{count:0,at:Date.now()};if(Date.now()-l.at>900000){l.count=0;l.at=Date.now();}limits.set(ip,l);if(++l.count>15)return send(res,429,{error:'Too many attempts. Try again in 15 minutes.'});if(!env.ADMIN_PASSWORD||env.ADMIN_PASSWORD.length<16)return send(res,503,{error:'Set ADMIN_PASSWORD (at least 16 characters) on the server.'});const hash=x=>crypto.createHash('sha256').update(String(x||'')).digest();if(!crypto.timingSafeEqual(hash(b.password),hash(env.ADMIN_PASSWORD)))return send(res,401,{error:'Incorrect password'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,Date.now()+8*3600000);cookie(res,'admin',token);return send(res,200,{ok:true});}
+ if(p==='/api/results'&&req.method==='GET')return send(res,200,{results:publicResults([...attempts.values()])});
  if(p==='/api/exam')return send(res,200,{exam:publicExam(bank),open:settings.open&&!validate(bank).length});
  if(p.startsWith('/api/admin')){if(!admin(req))return send(res,401,{error:'Sign in required'});
  if(p==='/api/admin/logout'){sessions.delete(auth(req).admin);cookie(res,'admin','');return send(res,200,{ok:true});}
- if(p==='/api/admin/config'&&req.method==='GET')return send(res,200,{exam:bank,settings,errors:validate(bank),backupReady,emailReady:!!(env.RESEND_API_KEY&&env.MAIL_FROM),extraAudio:bank.extraAudio});
+ if(p==='/api/admin/config'&&req.method==='GET')return send(res,200,{exam:bank,settings,errors:validate(bank),backupReady,publicBackupReady:!!env.GITHUB_TOKEN,publicBackupError,emailReady:!!(env.RESEND_API_KEY&&env.MAIL_FROM),extraAudio:bank.extraAudio});
  if(p==='/api/admin/config'&&req.method==='POST'){if(b.exam){const errors=validate(b.exam).filter(x=>!x.includes('questions required')&&!b.exam.sections?.some(s=>s.blocker&&x.includes(s.blocker)));if(errors.length)return send(res,400,{error:errors.join('\n')});bank=b.exam;await write('exam.json',bank);}if(b.open===true&&validate(bank).length)return send(res,400,{error:validate(bank).join('\n')});settings.open=b.open===true;await write('settings.json',settings);return send(res,200,{ok:true,errors:validate(bank)});}
  if(p==='/api/admin/attempts')return send(res,200,{attempts:[...attempts.values()].map(a=>({id:a.id,name:a.name,status:a.status,startedAt:a.startedAt,updatedAt:a.updatedAt,submittedAt:a.submittedAt,violations:a.violations,score:score(a),lastBackupAt:a.lastBackupAt,backupError:a.backupError,backupPending:a.backupPending})).sort((a,b)=>b.startedAt.localeCompare(a.startedAt))});
  const a=attempts.get(b.id||url.searchParams.get('id'));if(!a)return send(res,404,{error:'Attempt not found'});
@@ -53,7 +68,7 @@ export async function createApp(env=process.env){
  return send(res,404,{error:'Unknown operation'});
  });}
  if(!['GET','HEAD'].includes(req.method))return send(res,405,{error:'Method not allowed'});
- const file=path.resolve(ROOT,'public','.'+(p==='/'?'/index.html':p==='/admin'?'/admin.html':decodeURIComponent(p)));if(!file.startsWith(path.join(ROOT,'public')+path.sep))return send(res,403,{error:'Forbidden'});
+ const file=path.resolve(ROOT,'public','.'+(p==='/'?'/index.html':p==='/admin'?'/admin.html':p==='/results'?'/results.html':decodeURIComponent(p)));if(!file.startsWith(path.join(ROOT,'public')+path.sep))return send(res,403,{error:'Forbidden'});
  const stat=await fs.stat(file);if(!stat.isFile())throw Error('Missing');const mime={'.html':'text/html','.css':'text/css','.js':'text/javascript','.png':'image/png','.mp3':'audio/mpeg'}[path.extname(file)]||'application/octet-stream';res.setHeader('Content-Type',mime);res.setHeader('Cache-Control',p.includes('/assets/')?'public, max-age=86400':'no-cache');res.setHeader('Accept-Ranges','bytes');let start=0,end=stat.size-1,status=200;
  if(req.headers.range){const m=/^bytes=(\d+)-(\d*)$/.exec(req.headers.range);if(!m||Number(m[1])>=stat.size){res.writeHead(416,{'Content-Range':`bytes */${stat.size}`});return res.end();}start=Number(m[1]);end=m[2]?Math.min(Number(m[2]),end):end;if(end<start){res.writeHead(416);return res.end();}status=206;res.setHeader('Content-Range',`bytes ${start}-${end}/${stat.size}`);}res.writeHead(status,{'Content-Length':end-start+1});if(req.method==='HEAD')res.end();else createReadStream(file,{start,end}).pipe(res);
  }catch(e){if(!res.headersSent)send(res,e.code==='ENOENT'?404:400,{error:e.code==='ENOENT'?'Not found':'Request could not be completed'});else res.end();}});
