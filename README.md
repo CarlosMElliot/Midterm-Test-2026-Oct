@@ -88,6 +88,8 @@ Store decrypted exports privately. Dashboard JSON exports include answers and id
 
 ## Public results and GitHub Pages
 
+Open the [student results table](docs/RESULTS.md) directly on GitHub. It lists each submitted attempt, name, score, grading status, pending review count and UTC timestamps. GitHub Actions regenerates it when `docs/results.json` changes; repeat attempts remain separate rows. This does not require a Vercel redeployment.
+
 `/results` is the public scoreboard on the running Node app. It displays each submitted attempt's name, score out of 100, grading status, number of pending questions, submission time and last update time. Draft/reset attempts, answers, answer keys, teacher feedback, email addresses and session secrets are excluded. Students see a disclosure before starting. Scores awaiting manual review are explicitly provisional.
 
 In the original Node server mode, with `GITHUB_TOKEN` configured, the server publishes the same allow-listed summary to **`docs/results.json`** on the default branch once per minute. This public summary does not require the encryption key; encrypted detailed backups still do. The dashboard shows public-sync configuration/errors. Unchanged summaries are not recommitted. Live scores update immediately after submission/grading; the repository and Pages can lag behind. No student results are populated until actual attempts are submitted.
