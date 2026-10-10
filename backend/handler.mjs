@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import {createRepositoryStore,HttpError} from './github-store.mjs';
-import {validate,publicExam,publicResults,score,report} from '../lib.mjs';
+import {validate,publicExam,publicResults,score,report,publicDetails} from '../lib.mjs';
 const initial=JSON.parse(await fs.readFile(new URL('../data/exam.json',import.meta.url),'utf8'));
 const timestamp=()=>new Date().toISOString();
 const sha=s=>crypto.createHash('sha256').update(String(s||'')).digest('hex');
@@ -46,6 +46,7 @@ export function createHandler(env=process.env,store=createRepositoryStore(env),r
   if(method==='POST'&&((req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)||req.headers['sec-fetch-site']==='cross-site'))throw new HttpError(403,'Cross-origin request blocked');
   const b=method==='POST'?await readBody(req):{};
   if(path==='/api/exam'){const c=await config();return send(res,200,{exam:publicExam(c.exam),open:c.open&&!validate(c.exam).length});}
+  if(path==='/api/public-responses'&&method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');const results=[];for(const id of await store.list()){const a=(await store.read(file(id)))?.value;if(a?.status==='submitted'&&a.source==='github-pages-v2')results.push(publicDetails(a));}return send(res,200,{results:results.sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt))});}
   if(path==='/api/results'&&method==='GET')return send(res,200,(await store.read('docs/results.json',{plain:true,onMain:true}))?.value||{results:[]});
   if(path==='/api/login'&&method==='POST'){
    if(!env.ADMIN_PASSWORD||env.ADMIN_PASSWORD.length<16||!/^[a-f0-9]{64}$/i.test(env.RESULTS_ENCRYPTION_KEY||''))throw new HttpError(503,'Configure the admin password (16+ characters) and 64-hex encryption key in Vercel.');
